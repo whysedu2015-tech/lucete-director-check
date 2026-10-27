@@ -12,7 +12,11 @@ async function login(pw) {
     method: "POST", headers: { apikey: C.key, "Content-Type": "application/json" },
     body: JSON.stringify({ email: C.hqEmail, password: pw }),
   });
-  if (!r.ok) throw new Error("login");
+  if (!r.ok) {
+    let why = ""; try { const j = await r.json(); why = j.error_description || j.msg || j.message || j.error_code || ""; } catch (e) {}
+    const map = { "Invalid login credentials": "이메일과 비밀번호가 맞지 않습니다 (Invalid login credentials)", "Email not confirmed": "계정이 아직 확인되지 않았습니다 (Email not confirmed)" };
+    throw new Error(map[why] || `로그인 실패: ${r.status} ${why}`);
+  }
   const j = await r.json();
   token = j.access_token;
   try { sessionStorage.setItem("lucete-hq", JSON.stringify({ token, exp: Date.now() + (j.expires_in - 60) * 1000 })); } catch (e) {}
@@ -95,7 +99,7 @@ async function boot(err) {
 }
 $app.addEventListener("submit", async (e) => {
   e.preventDefault(); const pw = document.getElementById("pw").value; if (!pw) return;
-  try { await login(pw); boot(); } catch (er) { boot("비밀번호가 맞지 않습니다."); }
+  try { await login(pw); boot(); } catch (er) { boot(er.message || "로그인하지 못했습니다."); }
 });
 $app.addEventListener("click", (e) => {
   const s = e.target.closest("[data-sort]"); if (s) { const k = s.dataset.sort; sortDir = sortKey === k ? -sortDir : (k === "campus" ? 1 : -1); sortKey = k; $app.innerHTML = vDash(); return; }
