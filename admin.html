@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>원장 업무 진단 · 본사</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Myeongjo:wght@700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0}
+.wrap.wide { max-width: 1100px; }
+.login { max-width: 380px; margin: 40px auto 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.kpi { background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
+.kpi .k { font-size: 12.5px; color: var(--ink-3); }
+.kpi .v { font-family: var(--font-display); font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.tbl-wrap { overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 860px; }
+th, td { padding: 9px 10px; border-bottom: 1px solid var(--line-2); text-align: left; white-space: nowrap; }
+th { font-size: 12px; color: var(--ink-3); font-weight: 700; cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--paper); }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr { cursor: pointer; } tbody tr:hover { background: var(--bg); }
+td.sc { font-weight: 700; } .lo { color: var(--bad); } .hi { color: var(--good); }
+.rank { display: grid; gap: 8px; }
+.rk { display: grid; grid-template-columns: 34px 1fr 90px; gap: 10px; align-items: center; font-size: 14px; }
+.rk .bar2 { height: 8px; background: var(--line-2); border-radius: 4px; overflow: hidden; grid-column: 2; }
+.rk .bar2 i { display: block; height: 100%; background: var(--bad); }
+.rk .n { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.rk .id { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.detail { position: fixed; inset: 0; background: rgba(10,12,16,.45); z-index: 30; display: grid; place-items: end center; }
+.detail-in { background: var(--bg); width: min(720px, 100%); max-height: 88vh; overflow-y: auto; border-radius: 14px 14px 0 0; padding: 18px max(16px, env(safe-area-inset-left, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 12px; }
+@media (min-width: 760px) { .detail { place-items: center; } .detail-in { border-radius: 14px; } }
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in"><span class="brand">LUCETE</span><span class="stage" id="stage">원장 업무 진단 · 본사 결과</span></div><div class="bar"><i style="width:100%"></i></div></div>
+<main class="wrap wide" id="app" aria-live="polite"></main>
+<script src="config.js"></script>
+<script src="content.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
