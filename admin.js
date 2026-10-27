@@ -52,7 +52,7 @@ function vDash() {
   const rank = TASKS.map((t) => {
     let bad = 0, mid = 0; D.forEach((r) => { const l = lvOf((r.answers || {})[t.id]); if (l === "bad") bad++; else if (l === "mid") mid++; });
     return { t, bad, mid };
-  }).sort((a, b) => b.bad * 2 + b.mid - (a.bad * 2 + a.mid)).slice(0, 10);
+  }).filter((x) => x.bad + x.mid > 0).sort((a, b) => b.bad * 2 + b.mid - (a.bad * 2 + a.mid)).slice(0, 10);
   const maxR = Math.max(1, ...rank.map((x) => x.bad + x.mid));
   const th = (k, l, num) => `<th class="${num ? "num" : ""}" data-sort="${k}">${l}${sortKey === k ? (sortDir > 0 ? " ▲" : " ▼") : ""}</th>`;
   return `<div class="stack">
@@ -65,7 +65,7 @@ function vDash() {
       ${AREAS.map((a) => `<div class="kpi"><div class="k">${esc(a.name)} 평균</div><div class="v">${avg(D.map((r) => (r.scores || {})[a.k] || 0))}</div></div>`).join("")}
     </div>
     <div class="sheet stack"><h3>전체 캠퍼스에서 가장 많이 보완이 필요한 업무 TOP 10</h3>
-      <div class="rank">${rank.map((x, i) => `<div class="rk"><span class="id">${x.t.id}</span><span>${esc(x.t.t)}</span><span class="n">${x.bad}×  ${x.mid}△</span><span></span><span class="bar2"><i style="width:${((x.bad + x.mid) / maxR) * 100}%"></i></span></div>`).join("") || `<p class="muted">아직 제출이 없습니다.</p>`}</div>
+      <div class="rank">${rank.map((x, i) => `<div class="rk"><span class="id">${x.t.id}</span><span>${esc(x.t.t)}</span><span class="n">× ${x.bad} · △ ${x.mid}</span><span></span><span class="bar2"><i style="width:${((x.bad + x.mid) / maxR) * 100}%"></i></span></div>`).join("") || `<p class="muted">아직 보완이 필요하다고 답한 업무가 없습니다.</p>`}</div>
       <p class="muted">× 못 하고 있다 · △ 가끔 한다 (캠퍼스 수)</p></div>
     <div class="tbl-wrap"><table><thead><tr>
       ${th("campus", "캠퍼스")}${th("director", "원장")}${th("join_type", "가맹")}${th("focus", "재원생")}${th("region", "지역")}${th("total", "종합", 1)}${AREAS.map((a) => th(a.k, a.name, 1)).join("")}${th("created_at", "제출")}
