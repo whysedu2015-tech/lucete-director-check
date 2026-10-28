@@ -11,10 +11,10 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const task = (id) => TASKS.find((t) => t.id === id);
 const areaOf = (k) => AREAS.find((a) => a.k === k);
 
-function fresh() { return { v: 1, screen: "intro", info: {}, ans: {}, ai: 0, tab: "sum", filter: "all", missing: false }; }
+function fresh() { return { v: 1, screen: "intro", info: {}, ans: {}, ai: 0, tab: "sum", filter: "all", missing: false, dirty: true }; }
 let S = fresh();
 let hasSaved = false;
-try { const o = JSON.parse(localStorage.getItem(KEY) || "null"); if (o && o.v === 1) { S = Object.assign(fresh(), o); hasSaved = S.screen !== "intro"; } } catch (e) {}
+try { const o = JSON.parse(localStorage.getItem(KEY) || "null"); if (o && o.v === 1) { S = Object.assign(fresh(), o); if (o.dirty === undefined) S.dirty = !o.submittedAt; if (S.tab === "send") S.tab = "sum"; if (S.screen === "result" && (S.dirty || !S.submittedAt)) S.screen = "submit"; hasSaved = S.screen !== "intro"; } } catch (e) {}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 function go(screen, extra) { Object.assign(S, extra || {}, { screen }); save(); render(); window.scrollTo({ top: 0 }); }
 
@@ -97,7 +97,7 @@ function vDiag() {
     <div class="stack-s"><p class="eyebrow">${S.ai + 1} / ${AREAS.length} 영역 · 전체 ${answered}/${TASKS.length}</p><h2>${esc(A.name)}</h2><p class="muted">${esc(A.desc)}</p></div>
     <div class="tasks">${rows}</div>
     ${S.missing ? `<p class="flag bad-f">아직 답하지 않은 업무가 있습니다. 빨간 테두리를 확인해 주세요.</p>` : ""}
-    <div class="actions"><button class="btn" data-act="diag-prev">이전</button><button class="btn primary" data-act="diag-next">${S.ai === AREAS.length - 1 ? "결과 보기" : "다음 영역"}</button></div>
+    <div class="actions"><button class="btn" data-act="diag-prev">이전</button><button class="btn primary" data-act="diag-next">${S.ai === AREAS.length - 1 ? "다음: 본사 제출" : "다음 영역"}</button></div>
   </div>`;
 }
 
@@ -156,7 +156,6 @@ function vCal() {
     <div class="legend"><span class="ch bad">못 하고 있는 업무</span><span class="ch mid">가끔 하는 업무</span><span class="ch good">잘하고 있는 업무</span></div></div>
     <div class="sheet stack"><h3>반복하는 일</h3>${RECUR.map((r) => `<div class="rec"><p class="rec-k">${esc(r.k)}</p><div class="chips">${r.items.map(([l, id]) => chip(l, id)).join("")}</div></div>`).join("")}</div>
     <div class="months">${CAL_ORDER.map((m) => `<div class="mon ${m === nowM ? "now" : ""}"><div class="mon-h"><b>${m}월</b>${m === nowM ? `<span class="nowtag">이번 달</span>` : ""}</div><div class="chips">${CAL[m].map(([l, id]) => chip(l, id)).join("")}</div></div>`).join("")}</div>
-    <button class="btn primary block" data-tab="send">본사로 제출하기</button>
   </div>`;
 }
 function summaryText() {
@@ -192,32 +191,48 @@ async function submitToHQ() {
   });
   if (!r.ok) throw new Error(String(r.status));
 }
-function vSend() {
-  const done = S.submittedAt;
-  const noCampus = !(S.info.campus || "").trim();
+function copyBox() {
+  return `<details class="ref"><summary>결과를 글로 보기·복사</summary><div class="rb"><pre class="summary" id="summary">${esc(summaryText())}</pre><button class="btn" data-act="copy">결과 복사</button></div></details>`;
+}
+function vSubmit() {
+  const c = counts(); const i = S.info;
+  const noCampus = !(i.campus || "").trim();
+  const again = !!S.submittedAt;
   return `<div class="stack">
-    <div class="stack-s"><h2>본사로 제출</h2><p class="lead">제출하면 본사가 캠퍼스별 결과를 확인하고, 보완할 업무에 필요한 자료와 지원을 연결해 드립니다. 다른 캠퍼스는 이 결과를 볼 수 없습니다.</p></div>
-    ${done ? `<div class="flag good-f">${esc(done)}에 제출했습니다. 답을 고친 뒤 다시 제출하면 가장 최근 결과로 반영됩니다.</div>` : ""}
-    ${noCampus ? `<div class="flag bad-f">캠퍼스명이 비어 있습니다. '답 고치기'에서 캠퍼스 정보를 먼저 입력해 주세요.</div>` : ""}
-    <button class="btn red block" data-act="submit" ${noCampus ? "disabled" : ""}>${done ? "다시 제출" : "본사로 제출"}</button>
+    <div class="stack-s"><p class="eyebrow">마지막 단계</p><h2>${again ? "고친 답을 본사로 다시 제출" : "본사로 제출하고 결과 보기"}</h2>
+    <p class="lead">제출하면 바로 진단 결과가 열립니다. 본사는 캠퍼스별 결과를 확인하고, 보완할 업무에 필요한 자료와 지원을 연결해 드립니다. 다른 캠퍼스는 이 결과를 볼 수 없습니다.</p></div>
+    <div class="sheet stack-s">
+      <p><b>캠퍼스</b> ${esc(i.campus || "-")} · <b>원장</b> ${esc(i.name || "-")}</p>
+      ${[i.join, i.focus, i.region].some(Boolean) ? `<p class="muted">${esc([i.join, i.focus && "재원생 " + i.focus, i.region].filter(Boolean).join(" · "))}</p>` : ""}
+      <p class="muted">응답 ${TASKS.length}개 업무 · 잘하고 있다 ${c[2]} · 가끔 ${c[1]} · 못 하고 있다 ${c[0]} · 해당 없음 ${c.na}</p>
+    </div>
+    ${again ? `<div class="flag good-f">${esc(S.submittedAt)}에 제출한 결과가 있습니다. 답을 고쳤기 때문에 다시 제출해야 결과를 볼 수 있습니다. 가장 최근 제출이 본사에 반영됩니다.</div>` : ""}
+    ${noCampus ? `<div class="flag bad-f">캠퍼스명이 비어 있습니다. '캠퍼스 정보 고치기'에서 먼저 입력해 주세요.</div>` : ""}
+    <button class="btn red block" data-act="submit" ${noCampus ? "disabled" : ""}>본사로 제출하고 결과 보기</button>
     <div id="submitMsg"></div>
-    <details class="ref"><summary>결과를 글로 보기·복사</summary><div class="rb"><pre class="summary" id="summary">${esc(summaryText())}</pre><button class="btn" data-act="copy">결과 복사</button></div></details>
-    <div class="actions"><button class="btn" data-act="edit-info">답 고치기</button><button class="btn" data-act="restart-ask">새로 시작</button></div>
+    <div class="actions"><button class="btn" data-act="edit">답 고치기</button><button class="btn" data-act="edit-info">캠퍼스 정보 고치기</button></div>
+  </div>`;
+}
+function vFoot() {
+  return `<div class="stack" style="margin-top:28px">
+    <div class="flag good-f">${esc(S.submittedAt || "")}에 본사로 제출했습니다. 답을 고치면 다시 제출한 뒤 결과를 볼 수 있습니다.</div>
+    ${copyBox()}
+    <div class="actions"><button class="btn" data-act="edit">답 고치기</button><button class="btn" data-act="restart-ask">새로 시작</button></div>
     <div id="confirmBox"></div>
   </div>`;
 }
-const TABS = [["sum", "진단 결과"], ["fix", "보완할 업무"], ["cal", "월별 업무표"], ["send", "본사 제출"]];
+const TABS = [["sum", "진단 결과"], ["fix", "보완할 업무"], ["cal", "월별 업무표"]];
 function vResult() {
-  const body = { sum: vSum, fix: vFix, cal: vCal, send: vSend }[S.tab]();
-  return `<nav class="tabs" aria-label="결과 화면">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("")}</nav>${body}`;
+  const body = ({ sum: vSum, fix: vFix, cal: vCal }[S.tab] || vSum)();
+  return `<nav class="tabs" aria-label="결과 화면">${TABS.map(([k, l]) => `<button class="tab ${S.tab === k ? "on" : ""}" data-tab="${k}">${l}</button>`).join("")}</nav>${body}${vFoot()}`;
 }
 
 function render() {
-  const map = { intro: vIntro, info: vInfo, diag: vDiag, result: vResult };
+  const map = { intro: vIntro, info: vInfo, diag: vDiag, submit: vSubmit, result: vResult };
   $app.innerHTML = (map[S.screen] || vIntro)();
   const answered = TASKS.filter((t) => S.ans[t.id] !== undefined).length;
-  const label = { intro: "원장 업무 진단", info: "캠퍼스 정보", diag: `업무 진단 · ${AREAS[S.ai].name}`, result: "결과" }[S.screen];
-  const pct = S.screen === "intro" ? 0 : S.screen === "info" ? 4 : S.screen === "diag" ? 6 + (answered / TASKS.length) * 90 : 100;
+  const label = { intro: "원장 업무 진단", info: "캠퍼스 정보", diag: `업무 진단 · ${AREAS[S.ai].name}`, submit: "본사 제출", result: "결과" }[S.screen];
+  const pct = S.screen === "intro" ? 0 : S.screen === "info" ? 4 : S.screen === "diag" ? 6 + (answered / TASKS.length) * 90 : S.screen === "submit" ? 97 : 100;
   setTop(label, pct);
 }
 
@@ -227,7 +242,7 @@ $app.addEventListener("click", (e) => {
   if (!t) return;
   if (t.dataset.ans) {
     const v = t.dataset.v === "na" ? "na" : parseFloat(t.dataset.v);
-    S.ans[t.dataset.ans] = v; save();
+    S.ans[t.dataset.ans] = v; S.dirty = true; save();
     const card = t.closest(".task");
     card.querySelectorAll(".ab").forEach((b) => { const on = b === t; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on); });
     card.classList.remove("miss");
@@ -236,19 +251,19 @@ $app.addEventListener("click", (e) => {
     const eb = $app.querySelector(".eyebrow"); if (eb) eb.textContent = `${S.ai + 1} / ${AREAS.length} 영역 · 전체 ${answered}/${TASKS.length}`;
     return;
   }
-  if (t.dataset.seg) { S.info[t.dataset.seg] = t.dataset.v; save(); render(); return; }
+  if (t.dataset.seg) { S.info[t.dataset.seg] = t.dataset.v; S.dirty = true; save(); render(); return; }
   if (t.dataset.tab) { S.tab = t.dataset.tab; save(); render(); window.scrollTo({ top: 0 }); return; }
   if (t.dataset.filter) { S.filter = t.dataset.filter; save(); render(); return; }
   const a = t.dataset.act;
   if (a === "start") go("info");
   else if (a === "resume") go(S.screen === "intro" ? "info" : S.screen);
   else if (a === "to-intro") go("intro");
-  else if (a === "info-next") go("diag", { ai: 0, missing: false });
+  else if (a === "info-next") { const all = TASKS.every((x) => S.ans[x.id] !== undefined); if (all) go(S.dirty || !S.submittedAt ? "submit" : "result", { missing: false }); else go("diag", { ai: 0, missing: false }); }
   else if (a === "diag-prev") { if (S.ai === 0) go("info", { missing: false }); else go("diag", { ai: S.ai - 1, missing: false }); }
   else if (a === "diag-next") {
     const miss = TASKS.filter((x) => x.a === AREAS[S.ai].k && S.ans[x.id] === undefined);
     if (miss.length) { S.missing = true; render(); const el = document.getElementById("t_" + miss[0].id); if (el) el.scrollIntoView({ block: "center" }); return; }
-    if (S.ai < AREAS.length - 1) go("diag", { ai: S.ai + 1, missing: false }); else go("result", { tab: "sum", filter: "all", missing: false });
+    if (S.ai < AREAS.length - 1) go("diag", { ai: S.ai + 1, missing: false }); else go(S.dirty || !S.submittedAt ? "submit" : "result", { tab: "sum", filter: "all", missing: false });
   }
   else if (a === "edit") go("diag", { ai: 0, missing: false });
   else if (a === "edit-info") go("info", { missing: false });
@@ -256,10 +271,10 @@ $app.addEventListener("click", (e) => {
     t.disabled = true; t.textContent = "제출하는 중…";
     const msg = document.getElementById("submitMsg");
     submitToHQ().then(() => {
-      const d = new Date(); S.submittedAt = `${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; save(); render(); toast("본사로 제출했습니다.");
+      const d = new Date(); S.submittedAt = `${d.getMonth() + 1}월 ${d.getDate()}일 ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`; S.dirty = false; go("result", { tab: "sum", filter: "all" }); toast("본사로 제출했습니다. 결과를 확인하세요.");
     }).catch(() => {
       t.disabled = false; t.textContent = "다시 시도";
-      msg.innerHTML = `<div class="flag bad-f">제출하지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요. 계속 안 되면 아래 '결과를 글로 보기·복사'로 복사해 본사 담당자에게 보내 주세요.</div>`;
+      msg.innerHTML = `<div class="flag bad-f">제출하지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요. 계속 안 되면 본사 담당자에게 연락해 주세요.</div>`;
     });
   }
   else if (a === "restart-ask") {
@@ -273,6 +288,6 @@ $app.addEventListener("click", (e) => {
     try { navigator.clipboard.writeText(txt).then(() => toast("복사했습니다. 본사 담당자에게 붙여 넣어 보내 주세요."), fallback); } catch (err) { fallback(); }
   }
 });
-$app.addEventListener("input", (e) => { const el = e.target; if (el.dataset.info) { S.info[el.dataset.info] = el.value; save(); } });
+$app.addEventListener("input", (e) => { const el = e.target; if (el.dataset.info) { S.info[el.dataset.info] = el.value; S.dirty = true; save(); } });
 
 render();
