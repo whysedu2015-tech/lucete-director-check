@@ -47,7 +47,7 @@ function vIntro() {
     <div class="stack-s"><p class="eyebrow">루체테 원장 업무 진단</p>
     <h1>원장의 일을<br>하나씩 펼쳐 봅니다.</h1></div>
     <div class="sheet stack">
-      <p class="lead">원장의 일을 <b>교육 · 관리 · 모집 · 경영 · 행정</b> 다섯 영역, 61개 업무로 나눴습니다. 업무마다 한 번만 누르면 됩니다.</p>
+      <p class="lead">원장의 일을 <b>교육 · 관리 · 모집 · 경영 · 행정</b> 다섯 영역, ${TASKS.length}개 업무로 나눴습니다. 업무마다 한 번만 누르면 됩니다.</p>
       <div class="steps">
         <div><b>1</b><span>업무별로 "잘하고 있다 / 가끔 한다 / 못 하고 있다"를 고릅니다 (약 7분)</span></div>
         <div><b>2</b><span>잘하고 있는 업무와 보완할 업무를 이유·바로 할 일과 함께 보여 드립니다</span></div>
